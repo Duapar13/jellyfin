@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jellyfin - Suggestions de Films et Séries</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Jellyfin - Suggestions</h1>
+            <p class="subtitle">Soumettez vos films et séries préférés</p>
+        </header>
+
+        <main>
+            <!-- Section de soumission -->
+            <section class="submit-section">
+                <h2>Nouvelle suggestion</h2>
+                <form id="suggestionForm">
+                    <div class="form-group">
+                        <label for="type">Type :</label>
+                        <select id="type" name="type" required>
+                            <option value="film">Film</option>
+                            <option value="serie">Série</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Titre :</label>
+                        <input type="text" id="title" name="title" required placeholder="Ex: Inception">
+                    </div>
+                    <div class="form-group">
+                        <label for="year">Année (optionnel) :</label>
+                        <input type="number" id="year" name="year" placeholder="Ex: 2010" min="1900" max="2100">
+                    </div>
+                    <div class="form-group">
+                        <label for="suggestedBy">Suggéré par :</label>
+                        <input type="text" id="suggestedBy" name="suggestedBy" required placeholder="Votre nom">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Soumettre</button>
+                </form>
+            </section>
+
+            <!-- Section de visualisation -->
+            <section class="list-section">
+                <div class="section-header">
+                    <h2>Suggestions soumises</h2>
+                    <div class="filter-buttons">
+                        <button class="btn btn-filter active" data-filter="all">Tous</button>
+                        <button class="btn btn-filter" data-filter="pending">En attente</button>
+                        <button class="btn btn-filter" data-filter="added">Ajoutés</button>
+                    </div>
+                </div>
+                <div id="suggestionsList" class="suggestions-list">
+                    <!-- Les suggestions seront chargées ici -->
+                </div>
+            </section>
+
+            <!-- Modal de validation -->
+            <div id="validationModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2>Valider l'ajout</h2>
+                    <p>Pour marquer cette suggestion comme ajoutée, veuillez entrer le mot de passe Jellyfin :</p>
+                    <form id="validationForm">
+                        <input type="password" id="password" placeholder="Mot de passe" required>
+                        <input type="hidden" id="suggestionId">
+                        <div class="modal-buttons">
+                            <button type="submit" class="btn btn-primary">Valider</button>
+                            <button type="button" class="btn btn-secondary" id="cancelBtn">Annuler</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Jellyfin Suggestions Platform - Powered by GitHub Pages</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
