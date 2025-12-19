@@ -3,7 +3,7 @@ const JELLYFIN_PASSWORD = 'jellyfin2024'; // Mot de passe pour valider les ajout
 
 // JSONBin.io Configuration
 const JSONBIN_API_KEY = '$2a$10$Hk.NEpXNWDM9Z3yGkNk8IuitnAP0UeI1P0KQOEk9Gzk4u.vcihwFi'; // Master Key
-const JSONBIN_BIN_ID = ''; // L'ID sera créé automatiquement au premier enregistrement
+const JSONBIN_BIN_ID = '69452bc3d0ea881f4033f71a'; // Bin ID
 
 // Si vous n'avez pas encore créé de bin, laissez ces valeurs vides et créez-en un après la première sauvegarde
 // L'ID sera automatiquement sauvegardé dans localStorage
