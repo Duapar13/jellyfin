@@ -8,7 +8,9 @@ Une application web moderne pour gérer les suggestions de films et séries pour
 - 📊 **Visualisation** : Page pour voir toutes les suggestions avec leur statut (ajouté/en attente)
 - ✅ **Validation** : Système de validation avec mot de passe pour marquer les films comme ajoutés
 - 🎨 **Interface moderne** : Design élégant et responsive
-- 💾 **Stockage JSON** : Toutes les données sont stockées en JSON
+- 💾 **Stockage JSON** : Toutes les données sont stockées dans `suggestions.json` et accessibles depuis n'importe où
+- 📥 **Import depuis localStorage** : Bouton pour importer les données stockées localement vers le JSON
+- 🔄 **Synchronisation GitHub** : Sauvegarde automatique dans le fichier JSON via GitHub API (avec token)
 
 ## 🚀 Déploiement sur GitHub Pages
 
@@ -38,6 +40,27 @@ Par défaut, le mot de passe pour valider les ajouts est `jellyfin2024`. Pour le
    ```javascript
    const JELLYFIN_PASSWORD = 'votre_nouveau_mot_de_passe';
    ```
+
+### Configurer la sauvegarde automatique via GitHub API
+
+Pour activer la sauvegarde automatique dans le fichier `suggestions.json` :
+
+1. Créez un **Personal Access Token** GitHub :
+   - Allez sur https://github.com/settings/tokens
+   - Cliquez sur "Generate new token (classic)"
+   - Donnez-lui un nom (ex: "Jellyfin Suggestions")
+   - Cochez la permission **`repo`** (accès complet aux repositories)
+   - Cliquez sur "Generate token"
+   - **Copiez le token** (il commence par `ghp_`)
+
+2. Dans l'application :
+   - Cliquez sur le bouton **"⚙️ Config GitHub"**
+   - Collez votre token GitHub
+   - Cliquez sur "Enregistrer"
+
+3. Les nouvelles suggestions seront automatiquement sauvegardées dans le fichier `suggestions.json` du repository.
+
+⚠️ **Note** : Sans token GitHub, les données sont sauvegardées dans localStorage uniquement. Vous pouvez utiliser le bouton "📥 Importer depuis localStorage" pour transférer les données vers le JSON.
 
 ## 📁 Structure du projet
 
@@ -74,6 +97,22 @@ Utilisez les boutons de filtre en haut de la liste :
 - **En attente** : Affiche uniquement les suggestions non ajoutées
 - **Ajoutés** : Affiche uniquement les suggestions ajoutées
 
+### Importer depuis localStorage
+
+Si vous avez des suggestions stockées dans localStorage (par exemple depuis un autre appareil ou navigateur) :
+
+1. Cliquez sur le bouton **"📥 Importer depuis localStorage"**
+2. Les nouvelles suggestions seront fusionnées avec celles du JSON
+3. Les doublons seront automatiquement évités
+
+### Configuration GitHub
+
+Pour activer la sauvegarde automatique dans le fichier JSON :
+
+1. Cliquez sur **"⚙️ Config GitHub"**
+2. Entrez votre Personal Access Token GitHub (avec permission `repo`)
+3. Les modifications seront automatiquement synchronisées avec le repository
+
 ## 🔒 Sécurité
 
 ⚠️ **Note importante** : Le mot de passe est stocké en clair dans le code JavaScript. Pour une utilisation en production, considérez :
@@ -103,7 +142,9 @@ Les suggestions sont stockées au format JSON suivant :
 - HTML5
 - CSS3 (avec variables CSS et Grid/Flexbox)
 - JavaScript (Vanilla JS)
-- LocalStorage pour le stockage côté client
+- JSON pour le stockage des données (fichier `suggestions.json`)
+- LocalStorage comme backup local
+- GitHub API pour la synchronisation automatique
 
 ## 📄 Licence
 
