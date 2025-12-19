@@ -8,9 +8,8 @@ Une application web moderne pour gérer les suggestions de films et séries pour
 - 📊 **Visualisation** : Page pour voir toutes les suggestions avec leur statut (ajouté/en attente)
 - ✅ **Validation** : Système de validation avec mot de passe pour marquer les films comme ajoutés
 - 🎨 **Interface moderne** : Design élégant et responsive
-- 💾 **Stockage JSON** : Toutes les données sont stockées dans `suggestions.json` et accessibles depuis n'importe où
-- 📥 **Import depuis localStorage** : Bouton pour importer les données stockées localement vers le JSON
-- 🔄 **Synchronisation GitHub** : Sauvegarde automatique dans le fichier JSON via GitHub API (avec token)
+- 💾 **Stockage JSON** : Toutes les données sont stockées dans JSONBin.io et accessibles depuis n'importe où
+- 🔄 **Synchronisation automatique** : Sauvegarde automatique dans le cloud via JSONBin.io (gratuit et simple)
 
 ## 🚀 Déploiement sur GitHub Pages
 
@@ -41,26 +40,32 @@ Par défaut, le mot de passe pour valider les ajouts est `jellyfin2024`. Pour le
    const JELLYFIN_PASSWORD = 'votre_nouveau_mot_de_passe';
    ```
 
-### Configurer la sauvegarde automatique via GitHub API
+### Configurer JSONBin.io (Recommandé - Gratuit et Simple)
 
-Pour activer la sauvegarde automatique dans le fichier `suggestions.json` :
+JSONBin.io est un service gratuit qui permet de stocker des données JSON dans le cloud. C'est beaucoup plus simple que GitHub API !
 
-1. Créez un **Personal Access Token** GitHub :
-   - Allez sur https://github.com/settings/tokens
-   - Cliquez sur "Generate new token (classic)"
-   - Donnez-lui un nom (ex: "Jellyfin Suggestions")
-   - Cochez la permission **`repo`** (accès complet aux repositories)
-   - Cliquez sur "Generate token"
-   - **Copiez le token** (il commence par `ghp_`)
+1. **Créer un compte gratuit** :
+   - Allez sur https://jsonbin.io
+   - Créez un compte gratuit (c'est instantané)
+   - Allez dans votre dashboard
 
-2. Dans l'application :
-   - Cliquez sur le bouton **"⚙️ Config GitHub"**
-   - Collez votre token GitHub
-   - Cliquez sur "Enregistrer"
+2. **Obtenir votre API Key** :
+   - Dans votre dashboard, copiez votre **API Key** (elle commence par `$2b$10$...`)
 
-3. Les nouvelles suggestions seront automatiquement sauvegardées dans le fichier `suggestions.json` du repository.
+3. **Configurer dans le code** :
+   - Ouvrez le fichier `script.js`
+   - À la ligne 5, collez votre API Key :
+     ```javascript
+     const JSONBIN_API_KEY = 'votre_api_key_ici';
+     ```
 
-⚠️ **Note** : Sans token GitHub, les données sont sauvegardées dans localStorage uniquement. Vous pouvez utiliser le bouton "📥 Importer depuis localStorage" pour transférer les données vers le JSON.
+4. **Créer un bin (optionnel)** :
+   - Si vous voulez utiliser un bin existant, créez-en un sur JSONBin.io et copiez son ID
+   - Sinon, le premier enregistrement créera automatiquement un nouveau bin
+
+5. **C'est tout !** Les suggestions seront automatiquement sauvegardées dans le cloud et visibles par tous les utilisateurs.
+
+⚠️ **Note** : Si JSONBin.io n'est pas configuré, l'application chargera les données depuis le fichier `suggestions.json` local en fallback.
 
 ## 📁 Structure du projet
 
@@ -97,22 +102,6 @@ Utilisez les boutons de filtre en haut de la liste :
 - **En attente** : Affiche uniquement les suggestions non ajoutées
 - **Ajoutés** : Affiche uniquement les suggestions ajoutées
 
-### Importer depuis localStorage
-
-Si vous avez des suggestions stockées dans localStorage (par exemple depuis un autre appareil ou navigateur) :
-
-1. Cliquez sur le bouton **"📥 Importer depuis localStorage"**
-2. Les nouvelles suggestions seront fusionnées avec celles du JSON
-3. Les doublons seront automatiquement évités
-
-### Configuration GitHub
-
-Pour activer la sauvegarde automatique dans le fichier JSON :
-
-1. Cliquez sur **"⚙️ Config GitHub"**
-2. Entrez votre Personal Access Token GitHub (avec permission `repo`)
-3. Les modifications seront automatiquement synchronisées avec le repository
-
 ## 🔒 Sécurité
 
 ⚠️ **Note importante** : Le mot de passe est stocké en clair dans le code JavaScript. Pour une utilisation en production, considérez :
@@ -142,9 +131,8 @@ Les suggestions sont stockées au format JSON suivant :
 - HTML5
 - CSS3 (avec variables CSS et Grid/Flexbox)
 - JavaScript (Vanilla JS)
-- JSON pour le stockage des données (fichier `suggestions.json`)
-- LocalStorage comme backup local
-- GitHub API pour la synchronisation automatique
+- JSONBin.io pour le stockage cloud des données (gratuit et simple)
+- Fichier `suggestions.json` local comme fallback
 
 ## 📄 Licence
 

@@ -1,11 +1,14 @@
 // Configuration
 const JELLYFIN_PASSWORD = 'jellyfin2024'; // Mot de passe pour valider les ajouts
-const JSON_FILE = 'suggestions.json';
-const GITHUB_REPO = 'Duapar13/jellyfin'; // Format: username/repo
-const GITHUB_BRANCH = 'main';
-// IMPORTANT: Remplacez par votre Personal Access Token GitHub (avec permission 'repo')
-// Créez un token sur: https://github.com/settings/tokens
-const GITHUB_TOKEN = ''; // Exemple: 'ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+
+// JSONBin.io Configuration
+// Créez un compte gratuit sur https://jsonbin.io et obtenez votre API Key
+// Puis créez un bin et copiez son ID ici
+const JSONBIN_API_KEY = ''; // Votre API Key (ex: '$2b$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+const JSONBIN_BIN_ID = ''; // L'ID de votre bin (ex: '507f1f77e4b0f03c66f21212')
+
+// Si vous n'avez pas encore créé de bin, laissez ces valeurs vides et créez-en un après la première sauvegarde
+// L'ID sera automatiquement sauvegardé dans localStorage
 
 // Éléments DOM
 const suggestionForm = document.getElementById('suggestionForm');
@@ -22,25 +25,64 @@ let suggestionsData = []; // Cache des données chargées depuis JSON
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadFromJSONFile();
+    await loadFromJSONBin();
     loadSuggestions();
     setupEventListeners();
 });
 
-// Charger les données depuis le fichier JSON
-async function loadFromJSONFile() {
+// Charger les données depuis JSONBin.io
+async function loadFromJSONBin() {
+    // Récupérer le bin ID depuis localStorage s'il existe
+    const savedBinId = localStorage.getItem('jsonbin_bin_id') || JSONBIN_BIN_ID;
+    
+    if (!savedBinId) {
+        console.warn('⚠️ Aucun bin ID configuré. Les données seront chargées depuis le fichier JSON local.');
+        await loadFromLocalJSON();
+        return;
+    }
+
     try {
-        const response = await fetch(JSON_FILE + '?t=' + Date.now()); // Cache busting
+        const apiKey = JSONBIN_API_KEY || localStorage.getItem('jsonbin_api_key');
+        if (!apiKey) {
+            console.warn('⚠️ Aucune API Key configurée. Chargement depuis le fichier JSON local.');
+            await loadFromLocalJSON();
+            return;
+        }
+
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${savedBinId}/latest`, {
+            headers: {
+                'X-Master-Key': apiKey,
+                'X-Bin-Meta': 'false'
+            }
+        });
+
         if (response.ok) {
             const data = await response.json();
             suggestionsData = Array.isArray(data) ? data : [];
-            console.log(`✅ ${suggestionsData.length} suggestions chargées depuis ${JSON_FILE}`);
+            console.log(`✅ ${suggestionsData.length} suggestions chargées depuis JSONBin.io`);
         } else {
-            console.error('❌ Impossible de charger le fichier JSON');
+            console.warn('⚠️ Impossible de charger depuis JSONBin.io, utilisation du fichier JSON local');
+            await loadFromLocalJSON();
+        }
+    } catch (e) {
+        console.warn('⚠️ Erreur lors du chargement depuis JSONBin.io:', e);
+        await loadFromLocalJSON();
+    }
+}
+
+// Charger depuis le fichier JSON local (fallback)
+async function loadFromLocalJSON() {
+    try {
+        const response = await fetch('suggestions.json?t=' + Date.now());
+        if (response.ok) {
+            const data = await response.json();
+            suggestionsData = Array.isArray(data) ? data : [];
+            console.log(`✅ ${suggestionsData.length} suggestions chargées depuis suggestions.json`);
+        } else {
             suggestionsData = [];
         }
     } catch (e) {
-        console.error('❌ Erreur lors du chargement du JSON:', e);
+        console.error('❌ Erreur lors du chargement du JSON local:', e);
         suggestionsData = [];
     }
 }
@@ -75,11 +117,6 @@ function setupEventListeners() {
 async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!GITHUB_TOKEN) {
-        showNotification('⚠️ Token GitHub non configuré. Veuillez configurer GITHUB_TOKEN dans script.js', 'error');
-        return;
-    }
-
     const formData = new FormData(suggestionForm);
     const suggestion = {
         id: Date.now().toString(),
@@ -94,8 +131,8 @@ async function handleSubmit(e) {
 
     suggestionsData.push(suggestion);
     
-    // Sauvegarder dans le JSON via GitHub API
-    const success = await saveToJSONFile(suggestionsData);
+    // Sauvegarder dans JSONBin.io
+    const success = await saveToJSONBin(suggestionsData);
     
     if (success) {
         suggestionForm.reset();
@@ -119,19 +156,14 @@ async function handleValidation(e) {
         return;
     }
 
-    if (!GITHUB_TOKEN) {
-        showNotification('⚠️ Token GitHub non configuré. Veuillez configurer GITHUB_TOKEN dans script.js', 'error');
-        return;
-    }
-
     const suggestion = suggestionsData.find(s => s.id === currentSuggestionId);
 
     if (suggestion) {
         suggestion.status = 'added';
         suggestion.addedDate = new Date().toISOString();
         
-        // Sauvegarder dans le JSON via GitHub API
-        const success = await saveToJSONFile(suggestionsData);
+        // Sauvegarder dans JSONBin.io
+        const success = await saveToJSONBin(suggestionsData);
         
         if (success) {
             loadSuggestions();
@@ -219,69 +251,68 @@ function displaySuggestions(suggestions) {
     `).join('');
 }
 
-// Sauvegarder dans le fichier JSON via GitHub API
-async function saveToJSONFile(data) {
-    if (!GITHUB_TOKEN) {
-        console.error('❌ Token GitHub non configuré');
+// Sauvegarder dans JSONBin.io
+async function saveToJSONBin(data) {
+    const apiKey = JSONBIN_API_KEY || localStorage.getItem('jsonbin_api_key');
+    const binId = localStorage.getItem('jsonbin_bin_id') || JSONBIN_BIN_ID;
+
+    if (!apiKey) {
+        console.error('❌ API Key JSONBin.io non configurée');
+        showNotification('⚠️ Veuillez configurer JSONBIN_API_KEY dans script.js', 'error');
         return false;
     }
 
     try {
-        const jsonContent = JSON.stringify(data, null, 2);
-        const encodedContent = btoa(unescape(encodeURIComponent(jsonContent)));
-        
-        // Récupérer le SHA du fichier actuel pour le mettre à jour
-        let sha = null;
-        try {
-            const getFileResponse = await fetch(
-                `https://api.github.com/repos/${GITHUB_REPO}/contents/${JSON_FILE}`,
-                {
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                }
-            );
-            
-            if (getFileResponse.ok) {
-                const fileData = await getFileResponse.json();
-                sha = fileData.sha;
-            }
-        } catch (e) {
-            console.warn('⚠️ Impossible de récupérer le SHA du fichier:', e);
+        let url;
+        let method;
+        let headers;
+
+        if (binId) {
+            // Mettre à jour un bin existant
+            url = `https://api.jsonbin.io/v3/b/${binId}`;
+            method = 'PUT';
+            headers = {
+                'Content-Type': 'application/json',
+                'X-Master-Key': apiKey
+            };
+        } else {
+            // Créer un nouveau bin
+            url = 'https://api.jsonbin.io/v3/b';
+            method = 'POST';
+            headers = {
+                'Content-Type': 'application/json',
+                'X-Master-Key': apiKey,
+                'X-Bin-Name': 'Jellyfin Suggestions',
+                'X-Bin-Private': 'false' // Public pour que tout le monde puisse lire
+            };
         }
-        
-        // Mettre à jour le fichier
-        const updateResponse = await fetch(
-            `https://api.github.com/repos/${GITHUB_REPO}/contents/${JSON_FILE}`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: `Mise à jour des suggestions - ${new Date().toISOString()}`,
-                    content: encodedContent,
-                    branch: GITHUB_BRANCH,
-                    sha: sha
-                })
+
+        const response = await fetch(url, {
+            method: method,
+            headers: headers,
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            
+            // Si c'est un nouveau bin, sauvegarder l'ID
+            if (!binId && result.metadata && result.metadata.id) {
+                localStorage.setItem('jsonbin_bin_id', result.metadata.id);
+                console.log('✅ Nouveau bin créé avec l\'ID:', result.metadata.id);
             }
-        );
-        
-        if (updateResponse.ok) {
-            console.log('✅ Fichier JSON mis à jour via GitHub API');
-            // Recharger les données depuis le JSON
-            await loadFromJSONFile();
+            
+            console.log('✅ Données sauvegardées dans JSONBin.io');
+            // Recharger les données
+            await loadFromJSONBin();
             return true;
         } else {
-            const error = await updateResponse.json();
-            console.error('❌ Erreur GitHub API:', error);
+            const error = await response.json();
+            console.error('❌ Erreur JSONBin.io:', error);
             return false;
         }
     } catch (e) {
-        console.error('❌ Erreur lors de la sauvegarde JSON:', e);
+        console.error('❌ Erreur lors de la sauvegarde JSONBin.io:', e);
         return false;
     }
 }
