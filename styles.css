@@ -162,17 +162,6 @@ section h2 {
     gap: 1rem;
 }
 
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-#importBtn {
-    font-size: 0.9rem;
-    padding: 0.6rem 1rem;
-}
 
 .suggestions-list {
     display: flex;

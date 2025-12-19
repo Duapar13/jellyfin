@@ -1,9 +1,11 @@
 // Configuration
 const JELLYFIN_PASSWORD = 'jellyfin2024'; // Mot de passe pour valider les ajouts
-const STORAGE_KEY = 'jellyfin_suggestions';
 const JSON_FILE = 'suggestions.json';
 const GITHUB_REPO = 'Duapar13/jellyfin'; // Format: username/repo
 const GITHUB_BRANCH = 'main';
+// IMPORTANT: Remplacez par votre Personal Access Token GitHub (avec permission 'repo')
+// Créez un token sur: https://github.com/settings/tokens
+const GITHUB_TOKEN = ''; // Exemple: 'ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 // Éléments DOM
 const suggestionForm = document.getElementById('suggestionForm');
@@ -13,13 +15,6 @@ const validationForm = document.getElementById('validationForm');
 const cancelBtn = document.getElementById('cancelBtn');
 const closeModal = document.querySelector('.close');
 const filterButtons = document.querySelectorAll('.btn-filter');
-const importBtn = document.getElementById('importBtn');
-const configBtn = document.getElementById('configBtn');
-const configModal = document.getElementById('configModal');
-const configForm = document.getElementById('configForm');
-const closeConfigModal = document.querySelector('.close-config');
-const cancelConfigBtn = document.getElementById('cancelConfigBtn');
-const removeTokenBtn = document.getElementById('removeTokenBtn');
 
 let currentFilter = 'all';
 let currentSuggestionId = null;
@@ -39,29 +34,14 @@ async function loadFromJSONFile() {
         if (response.ok) {
             const data = await response.json();
             suggestionsData = Array.isArray(data) ? data : [];
-            // Synchroniser avec localStorage comme backup
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(suggestionsData));
             console.log(`✅ ${suggestionsData.length} suggestions chargées depuis ${JSON_FILE}`);
         } else {
-            console.warn('⚠️ Impossible de charger le fichier JSON, utilisation de localStorage');
-            loadFromLocalStorage();
-        }
-    } catch (e) {
-        console.warn('⚠️ Erreur lors du chargement du JSON, utilisation de localStorage:', e);
-        loadFromLocalStorage();
-    }
-}
-
-// Charger depuis localStorage comme fallback
-function loadFromLocalStorage() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-        try {
-            suggestionsData = JSON.parse(stored);
-        } catch (e) {
-            console.error('Erreur lors du parsing localStorage:', e);
+            console.error('❌ Impossible de charger le fichier JSON');
             suggestionsData = [];
         }
+    } catch (e) {
+        console.error('❌ Erreur lors du chargement du JSON:', e);
+        suggestionsData = [];
     }
 }
 
@@ -69,41 +49,6 @@ function loadFromLocalStorage() {
 function setupEventListeners() {
     // Formulaire de soumission
     suggestionForm.addEventListener('submit', handleSubmit);
-
-    // Bouton d'import
-    if (importBtn) {
-        importBtn.addEventListener('click', handleImportFromLocalStorage);
-    }
-
-    // Bouton de configuration
-    if (configBtn) {
-        configBtn.addEventListener('click', () => {
-            const token = localStorage.getItem('github_token');
-            if (token) {
-                document.getElementById('githubToken').value = token.substring(0, 10) + '...';
-            }
-            configModal.style.display = 'block';
-        });
-    }
-
-    // Modal de configuration
-    if (configForm) {
-        configForm.addEventListener('submit', handleConfigSubmit);
-    }
-    if (cancelConfigBtn) {
-        cancelConfigBtn.addEventListener('click', closeConfigModal);
-    }
-    if (closeConfigModal) {
-        closeConfigModal.addEventListener('click', closeConfigModal);
-    }
-    if (removeTokenBtn) {
-        removeTokenBtn.addEventListener('click', handleRemoveToken);
-    }
-    window.addEventListener('click', (e) => {
-        if (e.target === configModal) {
-            closeConfigModal();
-        }
-    });
 
     // Filtres
     filterButtons.forEach(btn => {
@@ -130,6 +75,11 @@ function setupEventListeners() {
 async function handleSubmit(e) {
     e.preventDefault();
 
+    if (!GITHUB_TOKEN) {
+        showNotification('⚠️ Token GitHub non configuré. Veuillez configurer GITHUB_TOKEN dans script.js', 'error');
+        return;
+    }
+
     const formData = new FormData(suggestionForm);
     const suggestion = {
         id: Date.now().toString(),
@@ -143,12 +93,19 @@ async function handleSubmit(e) {
     };
 
     suggestionsData.push(suggestion);
-    await saveToJSONFile(suggestionsData);
-    saveToLocalStorage(suggestionsData);
-
-    suggestionForm.reset();
-    loadSuggestions();
-    showNotification('Suggestion ajoutée avec succès !', 'success');
+    
+    // Sauvegarder dans le JSON via GitHub API
+    const success = await saveToJSONFile(suggestionsData);
+    
+    if (success) {
+        suggestionForm.reset();
+        loadSuggestions();
+        showNotification('✅ Suggestion ajoutée avec succès !', 'success');
+    } else {
+        // En cas d'erreur, retirer la suggestion ajoutée
+        suggestionsData.pop();
+        showNotification('❌ Erreur lors de la sauvegarde. Veuillez réessayer.', 'error');
+    }
 }
 
 // Gestion de la validation
@@ -158,7 +115,12 @@ async function handleValidation(e) {
     const password = document.getElementById('password').value;
 
     if (password !== JELLYFIN_PASSWORD) {
-        showNotification('Mot de passe incorrect !', 'error');
+        showNotification('❌ Mot de passe incorrect !', 'error');
+        return;
+    }
+
+    if (!GITHUB_TOKEN) {
+        showNotification('⚠️ Token GitHub non configuré. Veuillez configurer GITHUB_TOKEN dans script.js', 'error');
         return;
     }
 
@@ -167,10 +129,19 @@ async function handleValidation(e) {
     if (suggestion) {
         suggestion.status = 'added';
         suggestion.addedDate = new Date().toISOString();
-        await saveToJSONFile(suggestionsData);
-        saveToLocalStorage(suggestionsData);
-        loadSuggestions();
-        showNotification('Suggestion marquée comme ajoutée !', 'success');
+        
+        // Sauvegarder dans le JSON via GitHub API
+        const success = await saveToJSONFile(suggestionsData);
+        
+        if (success) {
+            loadSuggestions();
+            showNotification('✅ Suggestion marquée comme ajoutée !', 'success');
+        } else {
+            // Revenir à l'état précédent en cas d'erreur
+            suggestion.status = 'pending';
+            suggestion.addedDate = null;
+            showNotification('❌ Erreur lors de la sauvegarde. Veuillez réessayer.', 'error');
+        }
     }
 
     closeValidationModal();
@@ -250,141 +221,68 @@ function displaySuggestions(suggestions) {
 
 // Sauvegarder dans le fichier JSON via GitHub API
 async function saveToJSONFile(data) {
+    if (!GITHUB_TOKEN) {
+        console.error('❌ Token GitHub non configuré');
+        return false;
+    }
+
     try {
         const jsonContent = JSON.stringify(data, null, 2);
         const encodedContent = btoa(unescape(encodeURIComponent(jsonContent)));
         
-        // Essayer de sauvegarder via GitHub API si un token est disponible
-        const githubToken = localStorage.getItem('github_token');
-        
-        if (githubToken) {
-            try {
-                // Récupérer le SHA du fichier actuel pour le mettre à jour
-                const getFileResponse = await fetch(
-                    `https://api.github.com/repos/${GITHUB_REPO}/contents/${JSON_FILE}`,
-                    {
-                        headers: {
-                            'Authorization': `token ${githubToken}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
+        // Récupérer le SHA du fichier actuel pour le mettre à jour
+        let sha = null;
+        try {
+            const getFileResponse = await fetch(
+                `https://api.github.com/repos/${GITHUB_REPO}/contents/${JSON_FILE}`,
+                {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
                     }
-                );
-                
-                let sha = null;
-                if (getFileResponse.ok) {
-                    const fileData = await getFileResponse.json();
-                    sha = fileData.sha;
                 }
-                
-                // Mettre à jour le fichier
-                const updateResponse = await fetch(
-                    `https://api.github.com/repos/${GITHUB_REPO}/contents/${JSON_FILE}`,
-                    {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${githubToken}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: `Mise à jour des suggestions - ${new Date().toISOString()}`,
-                            content: encodedContent,
-                            branch: GITHUB_BRANCH,
-                            sha: sha
-                        })
-                    }
-                );
-                
-                if (updateResponse.ok) {
-                    console.log('✅ Fichier JSON mis à jour via GitHub API');
-                    return;
-                } else {
-                    const error = await updateResponse.json();
-                    console.warn('⚠️ Erreur GitHub API:', error);
-                }
-            } catch (apiError) {
-                console.warn('⚠️ Erreur lors de la sauvegarde via GitHub API:', apiError);
+            );
+            
+            if (getFileResponse.ok) {
+                const fileData = await getFileResponse.json();
+                sha = fileData.sha;
             }
+        } catch (e) {
+            console.warn('⚠️ Impossible de récupérer le SHA du fichier:', e);
         }
         
-        // Fallback: sauvegarder dans localStorage et préparer le téléchargement
-        // L'utilisateur devra télécharger et commit manuellement le fichier
-        console.log('💾 Données sauvegardées dans localStorage. Pour sauvegarder dans le JSON, utilisez GitHub API avec un token.');
+        // Mettre à jour le fichier
+        const updateResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_REPO}/contents/${JSON_FILE}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: `Mise à jour des suggestions - ${new Date().toISOString()}`,
+                    content: encodedContent,
+                    branch: GITHUB_BRANCH,
+                    sha: sha
+                })
+            }
+        );
         
+        if (updateResponse.ok) {
+            console.log('✅ Fichier JSON mis à jour via GitHub API');
+            // Recharger les données depuis le JSON
+            await loadFromJSONFile();
+            return true;
+        } else {
+            const error = await updateResponse.json();
+            console.error('❌ Erreur GitHub API:', error);
+            return false;
+        }
     } catch (e) {
-        console.error('Erreur lors de la sauvegarde JSON:', e);
-    }
-}
-
-// Sauvegarder dans localStorage comme backup
-function saveToLocalStorage(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-// Importer depuis localStorage vers JSON
-async function handleImportFromLocalStorage() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-        showNotification('Aucune donnée dans localStorage à importer', 'error');
-        return;
-    }
-
-    try {
-        const localData = JSON.parse(stored);
-        if (!Array.isArray(localData) || localData.length === 0) {
-            showNotification('Aucune suggestion valide dans localStorage', 'error');
-            return;
-        }
-
-        // Fusionner avec les données existantes (éviter les doublons)
-        const existingIds = new Set(suggestionsData.map(s => s.id));
-        const newSuggestions = localData.filter(s => !existingIds.has(s.id));
-        
-        if (newSuggestions.length === 0) {
-            showNotification('Toutes les suggestions de localStorage sont déjà dans le JSON', 'info');
-            return;
-        }
-
-        // Ajouter les nouvelles suggestions
-        suggestionsData = [...suggestionsData, ...newSuggestions];
-        
-        // Sauvegarder
-        await saveToJSONFile(suggestionsData);
-        saveToLocalStorage(suggestionsData);
-        
-        loadSuggestions();
-        showNotification(`${newSuggestions.length} suggestion(s) importée(s) depuis localStorage !`, 'success');
-        
-    } catch (e) {
-        console.error('Erreur lors de l\'import:', e);
-        showNotification('Erreur lors de l\'import depuis localStorage', 'error');
-    }
-}
-
-// Gérer la configuration GitHub
-function handleConfigSubmit(e) {
-    e.preventDefault();
-    const token = document.getElementById('githubToken').value.trim();
-    
-    if (token && token.startsWith('ghp_')) {
-        localStorage.setItem('github_token', token);
-        closeConfigModal();
-        showNotification('Token GitHub enregistré avec succès !', 'success');
-    } else {
-        showNotification('Token invalide. Le token doit commencer par "ghp_"', 'error');
-    }
-}
-
-function handleRemoveToken() {
-    localStorage.removeItem('github_token');
-    closeConfigModal();
-    showNotification('Token GitHub supprimé', 'info');
-}
-
-function closeConfigModal() {
-    if (configModal) {
-        configModal.style.display = 'none';
-        document.getElementById('githubToken').value = '';
+        console.error('❌ Erreur lors de la sauvegarde JSON:', e);
+        return false;
     }
 }
 
@@ -417,6 +315,7 @@ function showNotification(message, type = 'info') {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         z-index: 10000;
         animation: slideIn 0.3s ease-out;
+        max-width: 400px;
     `;
 
     document.body.appendChild(notification);
@@ -454,4 +353,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
