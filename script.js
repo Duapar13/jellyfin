@@ -120,7 +120,6 @@ async function handleSubmit(e) {
         id: Date.now().toString(),
         type: formData.get('type'),
         title: formData.get('title'),
-        year: formData.get('year') || null,
         suggestedBy: formData.get('suggestedBy'),
         dateAdded: new Date().toISOString(),
         status: 'pending',
@@ -227,7 +226,6 @@ function displaySuggestions(suggestions) {
                 <div class="suggestion-title">
                     <span class="type-badge type-${suggestion.type}">${suggestion.type === 'film' ? '🎬 Film' : '📺 Série'}</span>
                     ${suggestion.title}
-                    ${suggestion.year ? ` (${suggestion.year})` : ''}
                 </div>
                 <div class="suggestion-meta">
                     <span>👤 ${suggestion.suggestedBy}</span>
