@@ -23,30 +23,30 @@ let suggestionsData = []; // Cache des données chargées depuis JSON
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', async () => {
+    // Charger d'abord depuis le fichier JSON local (toujours disponible)
+    await loadFromLocalJSON();
+    
+    // Ensuite, essayer de charger depuis JSONBin.io si configuré (pour synchroniser)
     await loadFromJSONBin();
+    
     loadSuggestions();
     setupEventListeners();
 });
 
-// Charger les données depuis JSONBin.io
+// Charger les données depuis JSONBin.io (pour synchroniser avec le cloud)
 async function loadFromJSONBin() {
-    // Récupérer le bin ID depuis localStorage s'il existe
+    // Récupérer le bin ID depuis localStorage ou depuis la constante
     const savedBinId = localStorage.getItem('jsonbin_bin_id') || JSONBIN_BIN_ID;
     
-    if (!savedBinId) {
-        console.warn('⚠️ Aucun bin ID configuré. Les données seront chargées depuis le fichier JSON local.');
-        await loadFromLocalJSON();
-        return;
+    // Récupérer l'API Key depuis la constante ou localStorage
+    const apiKey = JSONBIN_API_KEY || localStorage.getItem('jsonbin_api_key');
+    
+    // Si pas d'API Key ou pas de bin ID, on garde les données du fichier local
+    if (!apiKey || !savedBinId) {
+        return; // Garder les données déjà chargées depuis le fichier local
     }
 
     try {
-        const apiKey = JSONBIN_API_KEY || localStorage.getItem('jsonbin_api_key');
-        if (!apiKey) {
-            console.warn('⚠️ Aucune API Key configurée. Chargement depuis le fichier JSON local.');
-            await loadFromLocalJSON();
-            return;
-        }
-
         const response = await fetch(`https://api.jsonbin.io/v3/b/${savedBinId}/latest`, {
             headers: {
                 'X-Master-Key': apiKey,
@@ -56,15 +56,20 @@ async function loadFromJSONBin() {
 
         if (response.ok) {
             const data = await response.json();
-            suggestionsData = Array.isArray(data) ? data : [];
-            console.log(`✅ ${suggestionsData.length} suggestions chargées depuis JSONBin.io`);
+            const cloudData = Array.isArray(data) ? data : [];
+            
+            // Si les données du cloud sont plus récentes ou plus nombreuses, les utiliser
+            if (cloudData.length > suggestionsData.length) {
+                suggestionsData = cloudData;
+                console.log(`✅ ${suggestionsData.length} suggestions synchronisées depuis JSONBin.io`);
+            } else {
+                console.log(`ℹ️ ${cloudData.length} suggestions dans JSONBin.io, ${suggestionsData.length} dans le fichier local`);
+            }
         } else {
-            console.warn('⚠️ Impossible de charger depuis JSONBin.io, utilisation du fichier JSON local');
-            await loadFromLocalJSON();
+            console.warn('⚠️ Impossible de charger depuis JSONBin.io, utilisation des données locales');
         }
     } catch (e) {
-        console.warn('⚠️ Erreur lors du chargement depuis JSONBin.io:', e);
-        await loadFromLocalJSON();
+        console.warn('⚠️ Erreur lors du chargement depuis JSONBin.io, utilisation des données locales:', e);
     }
 }
 
@@ -77,6 +82,7 @@ async function loadFromLocalJSON() {
             suggestionsData = Array.isArray(data) ? data : [];
             console.log(`✅ ${suggestionsData.length} suggestions chargées depuis suggestions.json`);
         } else {
+            console.warn('⚠️ Impossible de charger suggestions.json, initialisation avec un tableau vide');
             suggestionsData = [];
         }
     } catch (e) {
